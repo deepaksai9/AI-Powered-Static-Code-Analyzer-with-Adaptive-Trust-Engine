@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using ProjectAnalyzer.Dtos;
 
@@ -48,7 +49,8 @@ internal class OllamaClient
 
         response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(
+            cancellationToken);
 
         using var doc = JsonDocument.Parse(json);
 
@@ -89,17 +91,28 @@ internal class OllamaClient
                 .Replace("\"Medium\"", "\"Warning\"")
                 .Replace("\"Low\"", "\"Note\"");
 
-            var dto = JsonSerializer.Deserialize<IEnumerable<LlmResponseDto.ResultDto>>(
-                jsonContent,
-                Constants.ChatJsonOptions);
+            // Repair invalid JSON escape sequences returned by the LLM.
+            // Example:
+            // ".config\dotnet-tools.json"
+            jsonContent = RepairInvalidJsonEscapes(jsonContent);
+
+            var dto =
+                JsonSerializer.Deserialize<
+                    IEnumerable<LlmResponseDto.ResultDto>>(
+                        jsonContent,
+                        Constants.ChatJsonOptions);
 
             if (dto == null)
             {
-                Console.WriteLine("Failed to deserialize LLM response.");
+                Console.WriteLine(
+                    "Failed to deserialize LLM response.");
+
                 return null;
             }
 
-            Console.WriteLine($"{model} succeeded - {Clock.Elapsed.TotalSeconds:F2} seconds");
+            Console.WriteLine(
+                $"{model} succeeded - " +
+                $"{Clock.Elapsed.TotalSeconds:F2} seconds");
 
             return new LlmResponseDto
             {
@@ -114,5 +127,58 @@ internal class OllamaClient
 
             return null;
         }
+    }
+
+    private static string RepairInvalidJsonEscapes(string json)
+    {
+        var builder = new StringBuilder();
+
+        for (int i = 0; i < json.Length; i++)
+        {
+            char current = json[i];
+
+            if (current == '\\' && i + 1 < json.Length)
+            {
+                char next = json[i + 1];
+
+                bool validEscape =
+                    next == '"' ||
+                    next == '\\' ||
+                    next == '/' ||
+                    next == 'b' ||
+                    next == 'f' ||
+                    next == 'n' ||
+                    next == 'r' ||
+                    next == 't';
+
+                bool validUnicodeEscape =
+                    next == 'u' &&
+                    i + 5 < json.Length &&
+                    IsHex(json[i + 2]) &&
+                    IsHex(json[i + 3]) &&
+                    IsHex(json[i + 4]) &&
+                    IsHex(json[i + 5]);
+
+                if (!validEscape && !validUnicodeEscape)
+                {
+                    // Convert an invalid escape such as \d
+                    // into a literal backslash.
+                    builder.Append("\\\\");
+                    continue;
+                }
+            }
+
+            builder.Append(current);
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool IsHex(char c)
+    {
+        return
+            (c >= '0' && c <= '9') ||
+            (c >= 'a' && c <= 'f') ||
+            (c >= 'A' && c <= 'F');
     }
 }

@@ -65,6 +65,14 @@ var dto = await pipeline.AnalyzeProjectAsync(
 {
     ConsoleReportFormatter.Print(result);
 }
+string projectName =
+    new DirectoryInfo(rootPath).Name;
+
+EvaluationCsvExporter.Append(
+    "evaluation_results.csv",
+    projectName,
+    model,
+    enhancedResults);
     // Keep original SARIF generation (baseline)
     var rules = dto.Results
         .GroupBy(x => x.RuleId)
@@ -132,56 +140,142 @@ var results = enhancedResults
         };
     }
 
-    private static Func<EnhancedResult, SarifDto.ResultDto> MapToResult(List<SarifDto.RuleDto> rules)
+    private static Func<EnhancedResult, SarifDto.ResultDto> MapToResult(
+    List<SarifDto.RuleDto> rules)
 {
     return x =>
     {
-        var matchedRule = rules.FirstOrDefault(r => r.Id == x.RuleId);
+        var matchedRule =
+            rules.FirstOrDefault(
+                r => r.Id == x.RuleId);
 
         return new SarifDto.ResultDto
         {
+            // Standard SARIF fields
             RuleId = x.RuleId,
 
-            RuleIndex = matchedRule == null
-                ? 0
-                : rules.IndexOf(matchedRule),
+            RuleIndex =
+                matchedRule == null
+                    ? 0
+                    : rules.IndexOf(matchedRule),
 
-            Level = SarifDto.SeverityLevel.Warning,
+            Level =
+                SarifDto.SeverityLevel.Warning,
 
-            Message = new()
+            Message = new SarifDto.MessageDto
             {
                 Text = x.Message
             },
 
             Locations =
             [
-                new()
+                new SarifDto.LocationDto
                 {
-                    PhysicalLocation = new()
-                    {
-                        ArtifactLocation = new()
+                    PhysicalLocation =
+                        new SarifDto.PhysicalLocationDto
                         {
-                            Uri = x.Path,
-                            UriBaseId = "solutionDir"
-                        },
+                            ArtifactLocation =
+                                new SarifDto.ArtifactLocationDto
+                                {
+                                    Uri = x.Path,
+                                    UriBaseId = "solutionDir"
+                                },
 
-                        Region = new()
-                        {
-                            StartLine = x.StartLine,
-                            EndLine = x.EndLine,
-                            StartColumn = 1,
-                            EndColumn = 1
+                            Region =
+                                new SarifDto.RegionDto
+                                {
+                                    StartLine = x.StartLine,
+                                    EndLine = x.EndLine,
+                                    StartColumn = 1,
+                                    EndColumn = 1
+                                }
                         }
-                    }
                 }
             ],
 
-            ConfidenceScore = x.ConfidenceScore,
-            TrustScore = x.TrustScore,
-            IsVerified = x.IsVerified,
-            Recommendation = x.Recommendation,
-            Evidence = x.Evidence,
-            Priority = GetPriority(x.TrustScore)
+            // Adaptive Trust Engine data
+            // is stored in SARIF properties.
+            Properties =
+                new Dictionary<string, object?>
+                {
+                    ["confidenceScore"] =
+                        x.ConfidenceScore,
+
+                    ["trustScore"] =
+                        x.TrustScore,
+
+                    ["isVerified"] =
+                        x.IsVerified,
+
+                    ["recommendation"] =
+                        x.Recommendation,
+
+                    ["evidence"] =
+                        x.Evidence,
+
+                    ["priority"] =
+                        GetPriority(x.TrustScore),
+
+                    // Risk-aware decision
+                    ["actionDecision"] =
+                        x.ActionDecision,
+
+                    ["actionRiskScore"] =
+                        x.ActionRiskScore,
+
+                    // Controlled action
+                    ["controlStatus"] =
+                        x.ControlStatus,
+
+                    ["actionAllowed"] =
+                        x.ActionAllowed,
+
+                    ["verificationRequired"] =
+                        x.VerificationRequired,
+
+                    ["controlDescription"] =
+                        x.ControlDescription,
+
+                    // Outcome
+                    ["actionSucceeded"] =
+                        x.ActionSucceeded,
+
+                    ["outcomeScore"] =
+                        x.OutcomeScore,
+
+                    // Feedback
+                    ["feedbackScore"] =
+                        x.FeedbackScore,
+
+                    ["feedbackSource"] =
+                        x.FeedbackSource,
+
+                    // Trust evidence
+                    ["behavioralScore"] =
+                        x.BehavioralScore,
+
+                    ["performanceScore"] =
+                        x.PerformanceScore,
+
+                    ["actionScore"] =
+                        x.ActionScore,
+
+                    ["securityScore"] =
+                        x.SecurityScore,
+
+                    // Historical trust
+                    ["previousTrustScore"] =
+                        x.PreviousTrustScore,
+
+                    ["updatedTrustScore"] =
+                        x.UpdatedTrustScore,
+
+                    ["evaluationCount"] =
+                        x.EvaluationCount,
+
+                    ["hasHistoricalTrust"] =
+                        x.HasHistoricalTrust
+                }
         };
     };
 }

@@ -6,12 +6,15 @@ internal record SarifDto
 {
     [JsonPropertyName("$schema")]
     public required string Schema { get; set; }
+
     public required string Version { get; set; }
+
     public required List<RunDto> Runs { get; set; }
 
     public record ArtifactLocationDto
     {
         public required string Uri { get; set; }
+
         public required string UriBaseId { get; set; }
     }
 
@@ -23,9 +26,13 @@ internal record SarifDto
     public record DriverDto
     {
         public required string Name { get; set; }
+
         public required string SemanticVersion { get; set; }
+
         public required string Version { get; set; }
+
         public required string InformationUri { get; set; }
+
         public required List<RuleDto> Rules { get; set; }
     }
 
@@ -47,63 +54,70 @@ internal record SarifDto
     public record PhysicalLocationDto
     {
         public required ArtifactLocationDto ArtifactLocation { get; set; }
+
         public required RegionDto Region { get; set; }
     }
 
     public record PropertiesDto
     {
         public required List<string> Tags { get; set; }
+
         public required List<string> Categories { get; set; }
     }
 
     public record RegionDto
     {
         public required int StartLine { get; set; }
+
         public required int EndLine { get; set; }
+
         public required int StartColumn { get; set; }
+
         public required int EndColumn { get; set; }
     }
 
     public record ResultDto
-{
-    // Original SARIF fields
-    public required string RuleId { get; set; }
+    {
+        // Standard SARIF result fields
+        public required string RuleId { get; set; }
 
-    public required int RuleIndex { get; set; }
+        public required int RuleIndex { get; set; }
 
-    public required SeverityLevel Level { get; set; }
+        public required SeverityLevel Level { get; set; }
 
-    public required MessageDto Message { get; set; }
+        public required MessageDto Message { get; set; }
 
-    public required List<LocationDto> Locations { get; set; }
+        public required List<LocationDto> Locations { get; set; }
 
-    // ===== Adaptive Trust Engine Fields =====
-
-    public double ConfidenceScore { get; set; }
-
-    public double TrustScore { get; set; }
-
-    public bool IsVerified { get; set; }
-
-    public string Recommendation { get; set; } = string.Empty;
-
-    public List<string> Evidence { get; set; } = new();
-
-    public string Priority { get; set; } = "Medium";
-}
+        // Adaptive Trust Engine custom properties
+        public Dictionary<string, object?> Properties { get; set; } = new();
+    }
 
     public record RuleDto
     {
         public required string Id { get; set; }
-        public required ShortDescriptionDto ShortDescription { get; set; }
-        public required DefaultConfigurationDto DefaultConfiguration { get; set; }
+
+        public required ShortDescriptionDto ShortDescription
+        {
+            get;
+            set;
+        }
+
+        public required DefaultConfigurationDto DefaultConfiguration
+        {
+            get;
+            set;
+        }
+
         public required HelpDto Help { get; set; }
+
         public required PropertiesDto Properties { get; set; }
     }
 
     public record RunDto
     {
         public required ToolDto Tool { get; set; }
+
         public required List<ResultDto> Results { get; set; }
     }
 
